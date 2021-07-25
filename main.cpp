@@ -29,8 +29,8 @@ int main(){
         int l,r;
         std::cin>>l>>r;
         int res=0;
-        for(int i=l;i<=r;++i){
-            res+=data.exists(i);
+        for(auto now=data.lower_bound(l);now!=data.end()&&now->first<r;++now){
+            ++res;
         }
         std::cout<<res<<std::endl;
     }

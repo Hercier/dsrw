@@ -289,7 +289,6 @@ public:
 public:
   //! \name STL Access Functions Querying the Tree by Descending to a Leaf
   //! \{
-
   //! Non-STL function checking whether a key is in the B+ tree. The same as
   //! (find(k) != end()) or (count() != 0).
   bool exists(const key_type &key) const { return tree_.exists(key); }
@@ -458,6 +457,14 @@ public:
 
   //! Erase the key/data pair referenced by the iterator.
   void erase(iterator iter) { return tree_.erase(iter); }
+
+
+public:
+ //! my modification: find # of keys in [keyl,keyr).
+  unsigned int range_query(const key_type& keyl,const key_type& keyr){
+    return tree_.key_prefix(keyr)-tree_.key_prefix(keyl);
+  }
+
 
 #ifdef TLX_BTREE_TODO
   //! Erase all key/data pairs in the range [first,last). This function is

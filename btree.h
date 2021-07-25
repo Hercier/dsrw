@@ -218,7 +218,7 @@ private:
   struct node {
     //! Level in the b-tree, if level == 0 -> leaf node
     unsigned short level;
-
+    unsigned int subtsize;
     //! Number of key slotuse use, so the number of valid children or data
     //! pointers
     unsigned short slotuse;
@@ -227,6 +227,7 @@ private:
     void initialize(const unsigned short l) {
       level = l;
       slotuse = 0;
+      subtsize = 0;
     }
 
     //! True if this is a leaf node.
@@ -259,6 +260,12 @@ private:
 
     //! True if node has too few entries.
     bool is_underflow() const { return (node::slotuse < inner_slotmin); }
+    void update_subtsize(){
+      node::subtsize=0;
+      for(int i=0;i<node::slotuse;++i){
+        node::subtsize+=childid[i]->subtsize;
+      }
+    }
   };
 
   //! Extended structure of a leaf node in memory. Contains pairs of keys and
@@ -1410,6 +1417,26 @@ public:
     return (slot < leaf->slotuse && key_equal(key, leaf->key(slot)));
   }
 
+  //！ personally added: count # of objects in B+ tree with keys less equal to *key*
+  unsigned int key_prefix(const key_type &key){
+    node *n = root_;
+    if (!n)
+      return 0;
+    unsigned int ret=0;
+    while (!n->is_leafnode()) {
+      const InnerNode *inner = static_cast<const InnerNode *>(n);
+      unsigned short slot = find_upper(inner, key);
+      for(unsigned short lo = 0;lo < slot;++lo)
+        ret+=inner->childid[lo]->subtsize;
+      n = inner->childid[slot];
+    }
+
+    LeafNode *leaf = static_cast<LeafNode *>(n);
+
+    unsigned short slot = find_upper(leaf, key);
+    return slot+ret;
+  }
+
   //! Tries to locate a key in the B+ tree and returns an iterator to the
   //! key/data slot if found. If unsuccessful it returns end().
   iterator find(const key_type &key) {
@@ -1736,6 +1763,7 @@ private:
 
     if (root_ == nullptr) {
       root_ = head_leaf_ = tail_leaf_ = allocate_leaf();
+      root_->subtsize=1;
     }
 
     std::pair<iterator, bool> r =
@@ -1750,7 +1778,7 @@ private:
 
       newroot->childid[0] = root_;
       newroot->childid[1] = newchild;
-
+      newroot->subtsize = root_->subtsize+newchild->subtsize;
       newroot->slotuse = 1;
 
       root_ = newroot;
@@ -1835,7 +1863,7 @@ private:
             inner->slotkey[inner->slotuse] = *splitkey;
             inner->childid[inner->slotuse + 1] = split->childid[0];
             inner->slotuse++;
-
+            inner->subtsize++;
             // set new split key and move corresponding datum into
             // right node
             split->childid[0] = newchild;
@@ -1867,6 +1895,7 @@ private:
         inner->slotkey[slot] = newkey;
         inner->childid[slot + 1] = newchild;
         inner->slotuse++;
+        inner->subtsize++;
       }
 
       return r;
@@ -1899,7 +1928,7 @@ private:
 
       leaf->slotdata[slot] = value;
       leaf->slotuse++;
-
+      leaf->subtsize++;
       if (splitnode && leaf != *splitnode && slot == leaf->slotuse - 1) {
         // special case: the node was split, and the insert is at the
         // last slot of the old node. then the splitkey must be updated.
@@ -1923,6 +1952,7 @@ private:
     LeafNode *newleaf = allocate_leaf();
 
     newleaf->slotuse = leaf->slotuse - mid;
+    newleaf->subtsize= leaf->slotuse - mid;
 
     newleaf->next_leaf = leaf->next_leaf;
     if (newleaf->next_leaf == nullptr) {
@@ -1936,6 +1966,7 @@ private:
               newleaf->slotdata);
 
     leaf->slotuse = mid;
+    leaf->subtsize = mid;
     leaf->next_leaf = newleaf;
     newleaf->prev_leaf = leaf;
 
@@ -1971,14 +2002,14 @@ private:
     InnerNode *newinner = allocate_inner(inner->level);
 
     newinner->slotuse = inner->slotuse - (mid + 1);
-
+    newinner->update_subtsize();
     std::copy(inner->slotkey + mid + 1, inner->slotkey + inner->slotuse,
               newinner->slotkey);
     std::copy(inner->childid + mid + 1, inner->childid + inner->slotuse + 1,
               newinner->childid);
 
     inner->slotuse = mid;
-
+    inner->update_subtsize();
     *out_newkey = inner->key(mid);
     *out_newinner = newinner;
   }
