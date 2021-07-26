@@ -262,7 +262,7 @@ private:
     bool is_underflow() const { return (node::slotuse < inner_slotmin); }
     void update_subtsize(){
       node::subtsize=0;
-      for(int i=0;i<node::slotuse;++i){
+      for(int i=0;i<=node::slotuse;++i){
         node::subtsize+=childid[i]->subtsize;
       }
     }
@@ -1425,7 +1425,7 @@ public:
     unsigned int ret=0;
     while (!n->is_leafnode()) {
       const InnerNode *inner = static_cast<const InnerNode *>(n);
-      unsigned short slot = find_upper(inner, key);
+      unsigned short slot = find_lower(inner, key);
       for(unsigned short lo = 0;lo < slot;++lo)
         ret+=inner->childid[lo]->subtsize;
       n = inner->childid[slot];
@@ -1433,7 +1433,7 @@ public:
 
     LeafNode *leaf = static_cast<LeafNode *>(n);
 
-    unsigned short slot = find_upper(leaf, key);
+    unsigned short slot = find_lower(leaf, key);
     return slot+ret;
   }
 
@@ -1763,7 +1763,6 @@ private:
 
     if (root_ == nullptr) {
       root_ = head_leaf_ = tail_leaf_ = allocate_leaf();
-      root_->subtsize=1;
     }
 
     std::pair<iterator, bool> r =
@@ -1783,7 +1782,7 @@ private:
 
       root_ = newroot;
     }
-
+    
     // increment size if the item was inserted
     if (r.second)
       ++stats_.size;
@@ -1863,10 +1862,15 @@ private:
             inner->slotkey[inner->slotuse] = *splitkey;
             inner->childid[inner->slotuse + 1] = split->childid[0];
             inner->slotuse++;
-            inner->subtsize++;
+            unsigned int tp=split->childid[0]->subtsize;
+            inner->subtsize+=tp;
             // set new split key and move corresponding datum into
             // right node
+            split->subtsize-= tp;
             split->childid[0] = newchild;
+            split->subtsize+=newchild->subtsize;
+            //split->update_subtsize();
+            //inner->update_subtsize();
             *splitkey = newkey;
 
             return r;
@@ -1895,9 +1899,9 @@ private:
         inner->slotkey[slot] = newkey;
         inner->childid[slot + 1] = newchild;
         inner->slotuse++;
-        inner->subtsize++;
+        inner->update_subtsize();
       }
-
+      else if(r.second)inner->subtsize++;
       return r;
     } else // n->is_leafnode() == true
     {
@@ -2002,13 +2006,14 @@ private:
     InnerNode *newinner = allocate_inner(inner->level);
 
     newinner->slotuse = inner->slotuse - (mid + 1);
-    newinner->update_subtsize();
     std::copy(inner->slotkey + mid + 1, inner->slotkey + inner->slotuse,
               newinner->slotkey);
     std::copy(inner->childid + mid + 1, inner->childid + inner->slotuse + 1,
               newinner->childid);
 
     inner->slotuse = mid;
+    newinner->update_subtsize();
+    
     inner->update_subtsize();
     *out_newkey = inner->key(mid);
     *out_newinner = newinner;
@@ -3206,7 +3211,7 @@ private:
       os << "  ";
 
     os << "node " << node << " level " << node->level << " slotuse "
-       << node->slotuse << std::endl;
+       << node->slotuse << " subtsize"<<node->subtsize<< std::endl;
 
     if (node->is_leafnode()) {
       const LeafNode *leafnode = static_cast<const LeafNode *>(node);
@@ -3277,7 +3282,7 @@ private:
 
     if (n->is_leafnode()) {
       const LeafNode *leaf = static_cast<const LeafNode *>(n);
-
+      tlx_die_unless(leaf->subtsize==leaf->slotuse);//new
       tlx_die_unless(leaf == root_ || !leaf->is_underflow());
       tlx_die_unless(leaf->slotuse > 0);
 
@@ -3292,9 +3297,14 @@ private:
       vstats.size += leaf->slotuse;
     } else // !n->is_leafnode()
     {
+      
       const InnerNode *inner = static_cast<const InnerNode *>(n);
       vstats.inner_nodes++;
-
+      int cnt=0;
+      for(int i=0;i<=inner->slotuse;++i){
+        cnt+=inner->childid[i]->subtsize;
+      }
+      tlx_die_unless(cnt==inner->subtsize);
       tlx_die_unless(inner == root_ || !inner->is_underflow());
       tlx_die_unless(inner->slotuse > 0);
 
