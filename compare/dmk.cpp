@@ -13,7 +13,6 @@ random_device rand;
 
 int main(void) {
   int n = rand() % maxn + 1;
-  int m = maxm;
   printf("%d %d\n", n, m);
 
   int L = 0, R = rand() % maxr + 1;
