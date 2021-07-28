@@ -11,6 +11,7 @@ void System(std::string s){
 int main(void) {
   System("g++ dmk.cpp -o dmk");
     System("g++ ../pa2.cpp -o ../main");
+    System("g++ brute.cpp -o brute");
   while (true) {
     
     System("./dmk > in && ../main < in > out && ./brute < in > ans");

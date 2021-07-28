@@ -4,32 +4,34 @@
 #include <random>
 using namespace std;
 
-const int maxn = 100000;
-const int maxm = 100000;
-const int maxr = 100000;
+const int maxn = 10000000;
+const int maxm = 300;
+const int maxr = 1000000000;
 
 #define rand _rand
 random_device rand;
 
 int main(void) {
-  int n = rand() % maxn + 1;
-  printf("%d %d\n", n, m);
+  int n = maxn;
+  printf("%d\n", n);
 
   int L = 0, R = rand() % maxr + 1;
   int L2 = L - max(5, R - L >> 1);
   int R2 = R + max(5, R - L >> 1);
 
   for (int i = 0; i < n; ++i) {
-    int key = rand() % (R - L + 1) + L;
-    int val = -1;  // not used
-    printf("%d %d\n", key, val);
-  }
-
-  for (int i = 0; i < m; ++i) {
-    int l = (int)(rand() % (R2 - L2 + 1)) + L2;
-    int r = (int)(rand() % (R2 - L2 + 1)) + L2;
-    if (l > r) swap(l, r);
-    printf("%d %d\n", l, r);  // CAUTION do we need to deal with l > r?
+    char op=(rand()%2)?'i':'r';
+    int a,b;
+    if(op=='i'){
+        a = rand() % (R - L + 1) + L;
+        b = -1;  // not used
+    }
+    else{
+      a = (int)(rand() % (R2 - L2 + 1)) + L2;
+      b = (int)(rand() % (R2 - L2 + 1)) + L2;
+      if(a>b)swap(a,b);
+    }
+    printf("%c %d %d\n", op, a,b);
   }
   return 0;
 }
