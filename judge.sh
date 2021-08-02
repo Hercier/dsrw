@@ -13,7 +13,7 @@ do
     do
         echo $id:$i
         timeout 100 \time -f "%e" -o $i.txt ./main < ../../$i.in > $i.out
-        diff -q ../../$i.out $i.out
+        diff -wq ../../$i.out $i.out
         if [ $? -eq 0 ];
         then
             touch $i.pass
